@@ -60,7 +60,7 @@ publishing {
         register<MavenPublication>("release") {
             groupId = "dev.cybercoder_nishant"
             artifactId = "datetime-picker"
-            version = "0.0.1"
+            version = "0.0.3"
 
             afterEvaluate {
                 from(components["release"])
