@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -13,11 +14,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.smarttoolfactory.gesture.MotionEvent
+import com.smarttoolfactory.gesture.pointerMotionEvents
 
 @Composable
 fun TimePicker(
@@ -27,30 +31,55 @@ fun TimePicker(
     val deviation = 1
 
     val timeNow = TimeUtils.now()
-    var currentTime by remember {
-        mutableStateOf(timeNow)
-    }
+    var currentTime by remember { mutableStateOf(timeNow) }
 
     val hoursLayout = currentTime.getLayoutResult(unit = TimeUtils.TimeUnit.Hours)
     val minsLayout = currentTime.getLayoutResult(unit = TimeUtils.TimeUnit.Minutes)
     val secsLayout = currentTime.getLayoutResult(unit = TimeUtils.TimeUnit.Seconds)
 
+    var canvasSize by remember { mutableStateOf(Size.Unspecified) }
+    var oneThird by remember { mutableStateOf(0f) }
+    var hoursPos by remember { mutableStateOf(Offset.Zero) }
+    var minsPos by remember { mutableStateOf(Offset.Zero) }
+    var secsPos by remember { mutableStateOf(Offset.Zero) }
+
+    LaunchedEffect(key1 = canvasSize) {
+        val center = Offset(canvasSize.width / 2f, canvasSize.height / 2f)
+
+        oneThird = canvasSize.width / 3f
+        hoursPos = Offset(oneThird / 2f, center.y)
+        minsPos = Offset(center.x, center.y)
+        secsPos = Offset((oneThird * 2f + canvasSize.width) / 2, center.y)
+    }
+
+    var motionEvent by remember { mutableStateOf(MotionEvent.Idle) }
     Canvas(
         modifier = modifier
             .clipToBounds()
+            .pointerMotionEvents(
+                onDown = {
+                    motionEvent = MotionEvent.Down
+                    it.consume()
+                },
+                onMove = {
+                    motionEvent = MotionEvent.Move
+                    it.consume()
+                },
+                onUp = {
+                    motionEvent = MotionEvent.Up
+                    it.consume()
+                }
+            )
     ) {
-        val oneThird = size.width / 3f
-        val hoursPos = oneThird / 2f
-        val minsPos = center.x
-        val secsPos = (2 * oneThird + size.width) / 2
+        canvasSize = size
 
         for (i in -deviation..deviation) {
             drawText(
                 textMeasurer = hoursLayout.measurer,
                 text = hoursLayout.getText(offset = i),
-                topLeft = Offset(
-                    x = hoursPos - hoursLayout.width / 2f,
-                    y = center.y - (hoursLayout.height / 2f - i * hoursLayout.height)
+                topLeft = hoursPos - Offset(
+                    x = hoursLayout.width / 2f,
+                    y = hoursLayout.height / 2f - i * hoursLayout.height
                 ),
                 style = hoursLayout.style
             )
@@ -60,9 +89,9 @@ fun TimePicker(
             drawText(
                 textMeasurer = minsLayout.measurer,
                 text = minsLayout.getText(offset = i),
-                topLeft = Offset(
-                    x = minsPos - minsLayout.width / 2f,
-                    y = center.y - (minsLayout.height / 2f - i * minsLayout.height)
+                topLeft = minsPos - Offset(
+                    x = minsLayout.width / 2f,
+                    y = minsLayout.height / 2f - i * minsLayout.height
                 ),
                 style = minsLayout.style
             )
@@ -72,9 +101,9 @@ fun TimePicker(
             drawText(
                 textMeasurer = secsLayout.measurer,
                 text = secsLayout.getText(offset = i),
-                topLeft = Offset(
-                    x = secsPos - secsLayout.width / 2f,
-                    y = center.y - (secsLayout.height / 2f - i * secsLayout.height)
+                topLeft = secsPos - Offset(
+                    x = secsLayout.width / 2f,
+                    y = secsLayout.height / 2f - i * secsLayout.height
                 ),
                 style = secsLayout.style
             )
