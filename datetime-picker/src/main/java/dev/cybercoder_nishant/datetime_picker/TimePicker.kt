@@ -31,18 +31,20 @@ fun TimePicker(
     val dividerLength = 128.dp.value
     val deviation = 1
 
-    val timeNow = TimeUtils.now()
-    var currentTime by remember { mutableStateOf(timeNow) }
+    val utils by remember { mutableStateOf(TimeUtils.now()) }
+    var state by remember { mutableStateOf(TimeState()) }
 
-    val hoursLayout = currentTime.getLayoutResult(unit = TimeUtils.TimeUnit.Hours)
-    val minsLayout = currentTime.getLayoutResult(unit = TimeUtils.TimeUnit.Minutes)
-    val secsLayout = currentTime.getLayoutResult(unit = TimeUtils.TimeUnit.Seconds)
+    val hoursLayout = utils.getLayoutResult(unit = TimeUtils.TimeUnit.Hours)
+    val minsLayout = utils.getLayoutResult(unit = TimeUtils.TimeUnit.Minutes)
+    val secsLayout = utils.getLayoutResult(unit = TimeUtils.TimeUnit.Seconds)
 
     var canvasSize by remember { mutableStateOf(Size.Unspecified) }
     var oneThird by remember { mutableFloatStateOf(0f) }
     var hoursPos by remember { mutableStateOf(Offset.Zero) }
     var minsPos by remember { mutableStateOf(Offset.Zero) }
     var secsPos by remember { mutableStateOf(Offset.Zero) }
+
+    var scrollDy by remember { mutableFloatStateOf(0f) }
 
     LaunchedEffect(key1 = canvasSize) {
         val center = Offset(canvasSize.width / 2f, canvasSize.height / 2f)
@@ -54,20 +56,31 @@ fun TimePicker(
     }
 
     var motionEvent by remember { mutableStateOf(MotionEvent.Idle) }
+    var lockedPosition by remember { mutableStateOf(Offset.Unspecified) }
     Canvas(
         modifier = modifier
             .clipToBounds()
             .pointerMotionEvents(
                 onDown = {
                     motionEvent = MotionEvent.Down
+                    lockedPosition = it.position
+
+                    when (lockedPosition.x) {
+                        in 0f..<oneThird -> state.componentInScroll = TimeUtils.TimeUnit.Hours
+                        in oneThird..<(2 * oneThird) -> state.componentInScroll = TimeUtils.TimeUnit.Minutes
+                        else -> state.componentInScroll = TimeUtils.TimeUnit.Seconds
+                    }
+
                     it.consume()
                 },
                 onMove = {
                     motionEvent = MotionEvent.Move
+                    scrollDy = it.position.y - lockedPosition.y
                     it.consume()
                 },
                 onUp = {
                     motionEvent = MotionEvent.Up
+                    lockedPosition = Offset.Unspecified
                     it.consume()
                 }
             )
@@ -80,7 +93,7 @@ fun TimePicker(
                 text = hoursLayout.getText(offset = i),
                 topLeft = hoursPos - Offset(
                     x = hoursLayout.width / 2f,
-                    y = hoursLayout.height / 2f - i * hoursLayout.height
+                    y = hoursLayout.height / 2f - i * hoursLayout.height - scrollDy
                 ),
                 style = hoursLayout.style
             )
@@ -92,7 +105,7 @@ fun TimePicker(
                 text = minsLayout.getText(offset = i),
                 topLeft = minsPos - Offset(
                     x = minsLayout.width / 2f,
-                    y = minsLayout.height / 2f - i * minsLayout.height
+                    y = minsLayout.height / 2f - i * minsLayout.height - scrollDy
                 ),
                 style = minsLayout.style
             )
@@ -104,7 +117,7 @@ fun TimePicker(
                 text = secsLayout.getText(offset = i),
                 topLeft = secsPos - Offset(
                     x = secsLayout.width / 2f,
-                    y = secsLayout.height / 2f - i * secsLayout.height
+                    y = secsLayout.height / 2f - i * secsLayout.height - scrollDy
                 ),
                 style = secsLayout.style
             )
