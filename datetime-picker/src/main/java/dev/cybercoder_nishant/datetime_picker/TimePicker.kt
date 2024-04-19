@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,7 +39,7 @@ fun TimePicker(
     val secsLayout = currentTime.getLayoutResult(unit = TimeUtils.TimeUnit.Seconds)
 
     var canvasSize by remember { mutableStateOf(Size.Unspecified) }
-    var oneThird by remember { mutableStateOf(0f) }
+    var oneThird by remember { mutableFloatStateOf(0f) }
     var hoursPos by remember { mutableStateOf(Offset.Zero) }
     var minsPos by remember { mutableStateOf(Offset.Zero) }
     var secsPos by remember { mutableStateOf(Offset.Zero) }
