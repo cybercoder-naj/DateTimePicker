@@ -32,7 +32,8 @@ fun TimePicker(
     val deviation = 1
 
     val utils by remember { mutableStateOf(TimeUtils.now()) }
-    var state by remember { mutableStateOf(TimeState()) }
+    val state by remember { mutableStateOf(TimeState()) }
+    val scrollState by remember { state.scrollDy }
 
     val hoursLayout = utils.getLayoutResult(unit = TimeUtils.TimeUnit.Hours)
     val minsLayout = utils.getLayoutResult(unit = TimeUtils.TimeUnit.Minutes)
@@ -44,8 +45,6 @@ fun TimePicker(
     var minsPos by remember { mutableStateOf(Offset.Zero) }
     var secsPos by remember { mutableStateOf(Offset.Zero) }
 
-    var scrollDy by remember { mutableFloatStateOf(0f) }
-
     LaunchedEffect(key1 = canvasSize) {
         val center = Offset(canvasSize.width / 2f, canvasSize.height / 2f)
 
@@ -56,31 +55,35 @@ fun TimePicker(
     }
 
     var motionEvent by remember { mutableStateOf(MotionEvent.Idle) }
-    var lockedPosition by remember { mutableStateOf(Offset.Unspecified) }
+    var previousPosition by remember { mutableStateOf(Offset.Unspecified) }
     Canvas(
         modifier = modifier
             .clipToBounds()
             .pointerMotionEvents(
                 onDown = {
                     motionEvent = MotionEvent.Down
-                    lockedPosition = it.position
-
-                    when (lockedPosition.x) {
+                    when (it.position.x) {
                         in 0f..<oneThird -> state.componentInScroll = TimeUtils.TimeUnit.Hours
-                        in oneThird..<(2 * oneThird) -> state.componentInScroll = TimeUtils.TimeUnit.Minutes
+                        in oneThird..<(2 * oneThird) -> state.componentInScroll =
+                            TimeUtils.TimeUnit.Minutes
+
                         else -> state.componentInScroll = TimeUtils.TimeUnit.Seconds
                     }
 
+                    previousPosition = it.position
                     it.consume()
                 },
                 onMove = {
                     motionEvent = MotionEvent.Move
-                    scrollDy = it.position.y - lockedPosition.y
+                    state.scrollBy(it.position.y - previousPosition.y)
+
+                    previousPosition = it.position
                     it.consume()
                 },
                 onUp = {
                     motionEvent = MotionEvent.Up
-                    lockedPosition = Offset.Unspecified
+
+                    previousPosition = Offset.Unspecified
                     it.consume()
                 }
             )
@@ -88,13 +91,14 @@ fun TimePicker(
         canvasSize = size
 
         for (i in -deviation..deviation) {
+            val finalOffset = hoursPos - Offset(
+                x = hoursLayout.width / 2f,
+                y = hoursLayout.height / 2f - i * hoursLayout.height - scrollState.hours
+            )
             drawText(
                 textMeasurer = hoursLayout.measurer,
                 text = hoursLayout.getText(offset = i),
-                topLeft = hoursPos - Offset(
-                    x = hoursLayout.width / 2f,
-                    y = hoursLayout.height / 2f - i * hoursLayout.height - scrollDy
-                ),
+                topLeft = finalOffset,
                 style = hoursLayout.style
             )
         }
@@ -105,7 +109,7 @@ fun TimePicker(
                 text = minsLayout.getText(offset = i),
                 topLeft = minsPos - Offset(
                     x = minsLayout.width / 2f,
-                    y = minsLayout.height / 2f - i * minsLayout.height - scrollDy
+                    y = minsLayout.height / 2f - i * minsLayout.height - scrollState.minutes
                 ),
                 style = minsLayout.style
             )
@@ -117,7 +121,7 @@ fun TimePicker(
                 text = secsLayout.getText(offset = i),
                 topLeft = secsPos - Offset(
                     x = secsLayout.width / 2f,
-                    y = secsLayout.height / 2f - i * secsLayout.height - scrollDy
+                    y = secsLayout.height / 2f - i * secsLayout.height - scrollState.seconds
                 ),
                 style = secsLayout.style
             )
