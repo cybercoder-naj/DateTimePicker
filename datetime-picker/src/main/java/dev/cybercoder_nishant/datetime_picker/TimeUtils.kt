@@ -10,10 +10,10 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.sp
 import java.time.LocalTime
 
-data class TimeUtils(
-    val hours: Int,
-    val minutes: Int,
-    val seconds: Int
+internal data class TimeUtils(
+    var hours: Int,
+    var minutes: Int,
+    var seconds: Int
 ) {
     internal enum class TimeUnit {
         Hours, Minutes, Seconds;
@@ -55,14 +55,6 @@ data class TimeUtils(
             return formatTime(bindTime(time, unit.bound))
         }
 
-        private fun bindTime(time: Int, bound: Int): Int {
-            var value = time
-            if (value > bound)
-                value %= value % bound
-            while (value < 0)
-                value = bound - value
-            return value
-        }
     }
 
     @Composable
@@ -90,4 +82,21 @@ data class TimeUtils(
             TimeUnit.Minutes -> minutes
             TimeUnit.Seconds -> seconds
         }
+
+    fun decrement(unit: TimeUnit) {
+        when (unit) {
+            TimeUnit.Hours -> hours = bindTime(hours - 1, unit.bound)
+            TimeUnit.Minutes -> minutes = bindTime(minutes - 1, unit.bound)
+            TimeUnit.Seconds -> seconds = bindTime(seconds - 1, unit.bound)
+        }
+    }
+
+    private fun bindTime(time: Int, bound: Int): Int {
+        var value = time
+        if (value > bound)
+            value %= value % bound
+        while (value < 0)
+            value = bound - value
+        return value
+    }
 }

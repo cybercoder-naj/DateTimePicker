@@ -1,5 +1,6 @@
 package dev.cybercoder_nishant.datetime_picker
 
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,15 +30,15 @@ fun TimePicker(
     modifier: Modifier = Modifier
 ) {
     val dividerLength = 128.dp.value
-    val deviation = 1
+    val deviation = 2
 
-    val utils by remember { mutableStateOf(TimeUtils.now()) }
+    val currentTime by remember { mutableStateOf(TimeUtils.now()) }
     val state by remember { mutableStateOf(TimeState()) }
-    val scrollState by remember { state.scrollDy }
 
-    val hoursLayout = utils.getLayoutResult(unit = TimeUtils.TimeUnit.Hours)
-    val minsLayout = utils.getLayoutResult(unit = TimeUtils.TimeUnit.Minutes)
-    val secsLayout = utils.getLayoutResult(unit = TimeUtils.TimeUnit.Seconds)
+    val hoursLayout = currentTime.getLayoutResult(unit = TimeUtils.TimeUnit.Hours)
+    val minsLayout = currentTime.getLayoutResult(unit = TimeUtils.TimeUnit.Minutes)
+    val secsLayout = currentTime.getLayoutResult(unit = TimeUtils.TimeUnit.Seconds)
+    val threshold = hoursLayout.height / 2f
 
     var canvasSize by remember { mutableStateOf(Size.Unspecified) }
     var oneThird by remember { mutableFloatStateOf(0f) }
@@ -52,6 +53,18 @@ fun TimePicker(
         hoursPos = Offset(oneThird / 2f, center.y)
         minsPos = Offset(center.x, center.y)
         secsPos = Offset((oneThird * 2f + canvasSize.width) / 2, center.y)
+    }
+
+    LaunchedEffect(key1 = state) {
+        Log.d("TimePicker", "LaunchedEffect called with state=$state")
+        val (candidate, offset) = state.hasCrossedThreshold(threshold)
+
+        when (candidate) {
+            TimeUtils.TimeUnit.Hours -> currentTime.hours += offset
+            TimeUtils.TimeUnit.Minutes -> currentTime.minutes += offset
+            TimeUtils.TimeUnit.Seconds -> currentTime.seconds += offset
+            null -> Unit
+        }
     }
 
     var motionEvent by remember { mutableStateOf(MotionEvent.Idle) }
@@ -91,38 +104,46 @@ fun TimePicker(
         canvasSize = size
 
         for (i in -deviation..deviation) {
-            val finalOffset = hoursPos - Offset(
+            val hoursOffset = hoursPos - Offset(
                 x = hoursLayout.width / 2f,
-                y = hoursLayout.height / 2f - i * hoursLayout.height - scrollState.hours
+                y = hoursLayout.height / 2f - i * hoursLayout.height - state.scrollState.value.hours
             )
+            if (hoursOffset.y > size.height)
+                continue
             drawText(
                 textMeasurer = hoursLayout.measurer,
                 text = hoursLayout.getText(offset = i),
-                topLeft = finalOffset,
+                topLeft = hoursOffset,
                 style = hoursLayout.style
             )
         }
 
         for (i in -deviation..deviation) {
+            val minsOffset = minsPos - Offset(
+                x = minsLayout.width / 2f,
+                y = minsLayout.height / 2f - i * minsLayout.height - state.scrollState.value.minutes
+            )
+            if (minsOffset.y > size.height)
+                continue
             drawText(
                 textMeasurer = minsLayout.measurer,
                 text = minsLayout.getText(offset = i),
-                topLeft = minsPos - Offset(
-                    x = minsLayout.width / 2f,
-                    y = minsLayout.height / 2f - i * minsLayout.height - scrollState.minutes
-                ),
+                topLeft = minsOffset,
                 style = minsLayout.style
             )
         }
 
         for (i in -deviation..deviation) {
+            val secsOffset = secsPos - Offset(
+                x = secsLayout.width / 2f,
+                y = secsLayout.height / 2f - i * secsLayout.height - state.scrollState.value.seconds
+            )
+            if (secsOffset.y > size.height)
+                continue
             drawText(
                 textMeasurer = secsLayout.measurer,
                 text = secsLayout.getText(offset = i),
-                topLeft = secsPos - Offset(
-                    x = secsLayout.width / 2f,
-                    y = secsLayout.height / 2f - i * secsLayout.height - scrollState.seconds
-                ),
+                topLeft = secsOffset,
                 style = secsLayout.style
             )
         }
