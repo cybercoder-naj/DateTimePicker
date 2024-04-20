@@ -19,9 +19,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.smarttoolfactory.gesture.MotionEvent
 import com.smarttoolfactory.gesture.pointerMotionEvents
 
@@ -32,12 +35,11 @@ fun TimePicker(
     val dividerLength = 128.dp.value
     val deviation = 2
 
-    val currentTime by remember { mutableStateOf(TimeUtils.now()) }
     val state by remember { mutableStateOf(TimeState()) }
 
-    val hoursLayout = currentTime.getLayoutResult(unit = TimeUtils.TimeUnit.Hours)
-    val minsLayout = currentTime.getLayoutResult(unit = TimeUtils.TimeUnit.Minutes)
-    val secsLayout = currentTime.getLayoutResult(unit = TimeUtils.TimeUnit.Seconds)
+    val hoursLayout = getLayoutResult(state, TimeUnit.Hours)
+    val minsLayout = getLayoutResult(state, TimeUnit.Minutes)
+    val secsLayout = getLayoutResult(state, TimeUnit.Seconds)
     val threshold = hoursLayout.height / 2f
 
     var canvasSize by remember { mutableStateOf(Size.Unspecified) }
@@ -59,12 +61,12 @@ fun TimePicker(
         Log.d("TimePicker", "LaunchedEffect called with state=$state")
         val (candidate, offset) = state.hasCrossedThreshold(threshold)
 
-        when (candidate) {
-            TimeUtils.TimeUnit.Hours -> currentTime.hours += offset
-            TimeUtils.TimeUnit.Minutes -> currentTime.minutes += offset
-            TimeUtils.TimeUnit.Seconds -> currentTime.seconds += offset
-            null -> Unit
-        }
+//        when (candidate) {
+//            TimeUtils.TimeUnit.Hours -> currentTime.hours += offset
+//            TimeUtils.TimeUnit.Minutes -> currentTime.minutes += offset
+//            TimeUtils.TimeUnit.Seconds -> currentTime.seconds += offset
+//            null -> Unit
+//        }
     }
 
     var motionEvent by remember { mutableStateOf(MotionEvent.Idle) }
@@ -76,11 +78,11 @@ fun TimePicker(
                 onDown = {
                     motionEvent = MotionEvent.Down
                     when (it.position.x) {
-                        in 0f..<oneThird -> state.componentInScroll = TimeUtils.TimeUnit.Hours
-                        in oneThird..<(2 * oneThird) -> state.componentInScroll =
-                            TimeUtils.TimeUnit.Minutes
-
-                        else -> state.componentInScroll = TimeUtils.TimeUnit.Seconds
+//                        in 0f..<oneThird -> state.componentInScroll = TimeUtils.TimeUnit.Hours
+//                        in oneThird..<(2 * oneThird) -> state.componentInScroll =
+//                            TimeUtils.TimeUnit.Minutes
+//
+//                        else -> state.componentInScroll = TimeUtils.TimeUnit.Seconds
                     }
 
                     previousPosition = it.position
@@ -177,6 +179,23 @@ fun TimePicker(
 
     }
 }
+
+@Composable
+private fun getLayoutResult(state: TimeState, unit: TimeUnit): LayoutUtils {
+    val fontSize = 36.sp
+
+    val time = state.getTime(unit)
+    val measurer = rememberTextMeasurer()
+    val style = TextStyle(
+        fontSize = fontSize,
+        color = Color.Black
+    )
+    val layoutResult = remember(time) {
+        measurer.measure(formatTime(time), style)
+    }
+    return LayoutUtils(measurer, style, layoutResult, time, unit)
+}
+
 
 @Preview(device = "id:pixel_6", showBackground = true, showSystemUi = true)
 @Composable

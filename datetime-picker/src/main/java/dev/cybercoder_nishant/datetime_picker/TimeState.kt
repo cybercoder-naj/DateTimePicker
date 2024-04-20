@@ -1,78 +1,87 @@
 package dev.cybercoder_nishant.datetime_picker
 
-import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
+import java.time.LocalTime
 import kotlin.math.abs
 
-internal data class TimeState(
-    var componentInScroll: TimeUtils.TimeUnit? = null
-) {
+internal class TimeState {
     private val _scrollState = mutableStateOf(TimeScrollState())
     val scrollState: State<TimeScrollState> get() = _scrollState
+
+    private val _time = mutableStateOf(LocalTime.now())
+    val time: State<LocalTime> get() = _time
 
     companion object {
         private const val TAG = "TimeState"
     }
 
-    @Suppress("LocalVariableName")
-    class TimeScrollState(
-        _hours: Float = 0f,
-        _minutes: Float = 0f,
-        _seconds: Float = 0f
+    data class TimeScrollState(
+        var hours: Float = 0f,
+        var minutes: Float = 0f,
+        var seconds: Float = 0f,
+        var component: TimeUnit? = null
     ) {
-        var hours: Float
-            private set
-        var minutes: Float
-            private set
-        var seconds: Float
-            private set
 
-        init {
-            hours = _hours
-            minutes = _minutes
-            seconds = _seconds
-        }
-
-        fun offsetScroll(dy: Float, unit: TimeUtils.TimeUnit): TimeScrollState =
+        fun offsetScroll(dy: Float): TimeScrollState =
             copy().apply {
-                when (unit) {
-                    TimeUtils.TimeUnit.Hours -> hours += dy
-                    TimeUtils.TimeUnit.Minutes -> minutes += dy
-                    TimeUtils.TimeUnit.Seconds -> seconds += dy
+                when (component) {
+                    TimeUnit.Hours -> hours += dy
+                    TimeUnit.Minutes -> minutes += dy
+                    TimeUnit.Seconds -> seconds += dy
+                    null -> throw IllegalStateException("Component cannot be in non-scrolling state to offset scroll")
                 }
             }
 
-        fun copy(): TimeScrollState {
-            return TimeScrollState(hours, minutes, seconds)
+        fun hasCrossedThreshold(threshold: Float): Boolean {
+            return when (component) {
+                TimeUnit.Hours -> abs(hours) > threshold
+                TimeUnit.Minutes -> abs(minutes) > threshold
+                TimeUnit.Seconds -> abs(seconds) > threshold
+                null -> false
+            }
         }
+
+        fun direction(): Int {
+            val value = when (component) {
+                TimeUnit.Hours -> hours
+                TimeUnit.Minutes -> minutes
+                TimeUnit.Seconds -> seconds
+                null -> 0f
+            }
+
+            return when {
+                value == 0f -> 0
+                value < 0f -> -1
+                else -> 1
+            }
+        }
+    }
+
+    fun scrollStarted(unit: TimeUnit) {
+        _scrollState.value = scrollState.value.copy(component = unit)
     }
 
     fun scrollBy(dy: Float) {
-        if (componentInScroll == null) {
-            Log.e(TAG, "scrollBy: componentInScroll is null")
-            return
-        }
-
-        _scrollState.value = scrollState.value.offsetScroll(dy, componentInScroll!!)
+        _scrollState.value = scrollState.value.offsetScroll(dy)
     }
 
-    fun hasCrossedThreshold(threshold: Float): Pair<TimeUtils.TimeUnit?, Int> {
-        val checkCrossed = { scrollDy: Float ->
-            val crossed = abs(scrollDy) > threshold
-            if (!crossed)
-                null to 0
-            else if (scrollDy < 0)
-                componentInScroll to -1
-            else
-                componentInScroll to 1
-        }
+    fun scrollStopped() {
+        _scrollState.value = scrollState.value.copy(component = null)
+    }
 
-        return when (componentInScroll) {
-            TimeUtils.TimeUnit.Hours -> checkCrossed(scrollState.value.hours)
-            TimeUtils.TimeUnit.Minutes -> checkCrossed(scrollState.value.minutes)
-            TimeUtils.TimeUnit.Seconds -> checkCrossed(scrollState.value.seconds)
-            null -> null to 0
+    fun hasCrossedThreshold(threshold: Float): Pair<TimeUnit?, Int> {
+        if (!scrollState.value.hasCrossedThreshold(threshold))
+            return null to 0
+
+        return scrollState.value.component to scrollState.value.direction()
+    }
+
+    fun getTime(unit: TimeUnit): Int {
+        return when (unit) {
+            TimeUnit.Hours -> time.value.hour
+            TimeUnit.Minutes -> time.value.minute
+            TimeUnit.Seconds -> time.value.second
         }
     }
 }
