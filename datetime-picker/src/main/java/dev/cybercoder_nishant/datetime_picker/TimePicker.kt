@@ -1,6 +1,5 @@
 package dev.cybercoder_nishant.datetime_picker
 
-import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.smarttoolfactory.gesture.MotionEvent
 import com.smarttoolfactory.gesture.pointerMotionEvents
+import kotlin.math.abs
 
 @Composable
 fun TimePicker(
@@ -34,6 +34,7 @@ fun TimePicker(
 ) {
     val dividerLength = 128.dp.value
     val deviation = 2
+    val scrollingThreshold = 5f
 
     val state by remember { mutableStateOf(TimeState()) }
 
@@ -57,18 +58,6 @@ fun TimePicker(
         secsPos = Offset((oneThird * 2f + canvasSize.width) / 2, center.y)
     }
 
-    LaunchedEffect(key1 = state) {
-        Log.d("TimePicker", "LaunchedEffect called with state=$state")
-        val (candidate, offset) = state.hasCrossedThreshold(threshold)
-
-//        when (candidate) {
-//            TimeUtils.TimeUnit.Hours -> currentTime.hours += offset
-//            TimeUtils.TimeUnit.Minutes -> currentTime.minutes += offset
-//            TimeUtils.TimeUnit.Seconds -> currentTime.seconds += offset
-//            null -> Unit
-//        }
-    }
-
     var motionEvent by remember { mutableStateOf(MotionEvent.Idle) }
     var previousPosition by remember { mutableStateOf(Offset.Unspecified) }
     Canvas(
@@ -77,27 +66,28 @@ fun TimePicker(
             .pointerMotionEvents(
                 onDown = {
                     motionEvent = MotionEvent.Down
-                    when (it.position.x) {
-//                        in 0f..<oneThird -> state.componentInScroll = TimeUtils.TimeUnit.Hours
-//                        in oneThird..<(2 * oneThird) -> state.componentInScroll =
-//                            TimeUtils.TimeUnit.Minutes
-//
-//                        else -> state.componentInScroll = TimeUtils.TimeUnit.Seconds
-                    }
-
                     previousPosition = it.position
                     it.consume()
                 },
                 onMove = {
                     motionEvent = MotionEvent.Move
-                    state.scrollBy(it.position.y - previousPosition.y)
+                    val dy = it.position.y - previousPosition.y
+                    if (abs(dy) > scrollingThreshold) {
+                        when (it.position.x) {
+                            in 0f..<oneThird -> state.startOrResumeScrolling(TimeUnit.Hours)
+                            in oneThird..<(2 * oneThird) -> state.startOrResumeScrolling(TimeUnit.Minutes)
+                            else -> state.startOrResumeScrolling(TimeUnit.Seconds)
+                        }
+                    }
+
+                    state.scrollByIfScrolling(it.position.y - previousPosition.y)
 
                     previousPosition = it.position
                     it.consume()
                 },
                 onUp = {
                     motionEvent = MotionEvent.Up
-
+                    state.stopScrolling()
                     previousPosition = Offset.Unspecified
                     it.consume()
                 }

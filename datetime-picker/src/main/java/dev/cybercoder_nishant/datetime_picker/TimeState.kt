@@ -29,7 +29,7 @@ internal class TimeState {
                     TimeUnit.Hours -> hours += dy
                     TimeUnit.Minutes -> minutes += dy
                     TimeUnit.Seconds -> seconds += dy
-                    null -> throw IllegalStateException("Component cannot be in non-scrolling state to offset scroll")
+                    null -> Unit
                 }
             }
 
@@ -58,15 +58,15 @@ internal class TimeState {
         }
     }
 
-    fun scrollStarted(unit: TimeUnit) {
+    fun startOrResumeScrolling(unit: TimeUnit) {
         _scrollState.value = scrollState.value.copy(component = unit)
     }
 
-    fun scrollBy(dy: Float) {
+    fun scrollByIfScrolling(dy: Float) {
         _scrollState.value = scrollState.value.offsetScroll(dy)
     }
 
-    fun scrollStopped() {
+    fun stopScrolling() {
         _scrollState.value = scrollState.value.copy(component = null)
     }
 
